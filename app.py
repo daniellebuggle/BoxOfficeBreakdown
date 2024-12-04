@@ -110,7 +110,7 @@ app.layout = dmc.Container([
         dmc.Col([
             dcc.Graph(
                 id="radar",
-                figure=fig1,  # Use the Plotly figure generated
+                figure={},  # Use the Plotly figure generated
                 style={'height': '45vh'}  # Adjusting the height of the plot
             ),
         ], span=5)
