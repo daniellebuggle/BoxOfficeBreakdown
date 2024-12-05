@@ -112,6 +112,8 @@ adjusted_color_map = {genre: adjust_alpha(color, alpha_value) for genre, color i
 critic_categories = ['rotten tomatoes critics', 'metacritic critics', 'rotten tomatoes audience',
                      'metacritic audience']
 
+
+
 app = Dash()
 app.layout = dmc.Container([
     dcc.ConfirmDialog(
@@ -144,8 +146,8 @@ app.layout = dmc.Container([
                                  col != 'year' and col != 'primary genre'],
                         placeholder="X-axis attribute",
                         style={'width': '100%'}
-                    )
-                ], span=3),
+                    ),
+                ], span=3, style={'display': 'flex', 'align-items': 'right'}),
 
                 dmc.Col([
                     dcc.Dropdown(
@@ -155,7 +157,7 @@ app.layout = dmc.Container([
                         placeholder="Y-axis attribute",
                         style={'width': '100%'}
                     )
-                ], span=3),
+                ], span=3, style={'display': 'flex', 'align-items': 'right'}),
                 dmc.Col([
                     daq.BooleanSwitch(
                         id='genre_sort_switch',
@@ -168,12 +170,13 @@ app.layout = dmc.Container([
                                 "fontWeight": "600",
                                 "color": "#333333",
                                 "marginRight": "100px",
-                                "paddingBottom": "8px"
+                                "paddingBottom": "8px",
+                                "paddingLeft": "8px"
                             }
                         },
                         labelPosition='right',
                     )
-                ], span=3),
+                ], span=2, style={'display': 'flex', 'align-items': 'right'}),
                 dmc.Col([
                     dcc.Dropdown(
                         id="encode_size",
@@ -181,7 +184,7 @@ app.layout = dmc.Container([
                         placeholder="encode_size",
                         style={'width': '100%'}
                     )
-                ], span=3),
+                ], span=3, style={'display': 'flex', 'align-items': 'left'}),
             ], align="center"),
             # Scatter plot to show the correlation between the two selected attributes
             dcc.Graph(
