@@ -57,11 +57,40 @@ def adjust_alpha(color, alpha_value):
     return f"rgba({', '.join(rgba_values)})"
 
 
+def clean_data(dataframe, list_numeric):
+    for entry in list_numeric:
+        dataframe.loc[:, entry] = dataframe[entry].replace('-', np.nan)
+        dataframe.loc[:, entry] = dataframe[entry].replace({'\$': '', ',': ''}, regex=True).astype(float)
+        dataframe = dataframe.dropna(subset=[entry])
+    return dataframe
+
+
+numeric_attributes = [
+    "rotten tomatoes critics", "metacritic critics", "average critics ",
+    "rotten tomatoes audience", "metacritic audience", "average audience",
+    "audience vs critics deviance", "opening weekend ($million)",
+    "opening weekend", "domestic gross ($million)", "domestic gross",
+    "foreign gross ($million)", "foreign gross", "worldwide gross",
+    "worldwide gross ($million)", "budget ($million)"
+]
+
+size_attributes = ["profit", "opening weekend ($million)",
+                   "domestic gross ($million)",
+                   "foreign gross ($million)",
+                   "worldwide gross ($million)"]
+
+numeric_attributes = [attr.strip().lower() for attr in numeric_attributes]  # Cleaned and lowercase
+
 df = pd.read_csv('The Hollywood Insider.csv')
 df.columns = df.columns.str.strip().str.lower()
 
 # Convert 'primary genre' to lowercase
 df['primary genre'] = df['primary genre'].str.lower()
+
+df = clean_data(df, numeric_attributes)
+df = calculate_profit(df)
+df['profit'] = pd.to_numeric(df['profit'], errors='coerce')
+df['worldwide gross ($million)'] = pd.to_numeric(df['worldwide gross ($million)'], errors='coerce')
 
 initial_genres = ['action', 'comedy', 'drama', 'adventure', 'horror']
 all_genres = ['action', 'comedy', 'drama', 'adventure', 'horror', 'thriller', 'animation', 'romance', 'sci-fi',
@@ -91,18 +120,6 @@ adjusted_color_map = {genre: adjust_alpha(color, alpha_value) for genre, color i
 critic_categories = ['rotten tomatoes critics', 'metacritic critics', 'rotten tomatoes audience',
                      'metacritic audience']
 
-numeric_attributes = [
-    "rotten tomatoes critics", "Metacritic Critics", "Average critics ",
-    "Rotten Tomatoes Audience", "Metacritic Audience",
-    "Rotten Tomatoes vs Metacritic deviance", "Average audience",
-    "Audience vs Critics deviance", "Opening weekend ($million)",
-    "Opening Weekend", "Domestic gross ($million)", "Domestic Gross",
-    "Foreign Gross ($million)", "Foreign Gross", "worldwide gross",
-    "worldwide gross ($million)", "budget ($million)"
-]
-
-numeric_attributes = [attr.strip().lower() for attr in numeric_attributes]  # Cleaned and lowercase
-
 app = Dash()
 app.layout = dmc.Container([
     dcc.ConfirmDialog(
@@ -124,7 +141,8 @@ app.layout = dmc.Container([
             dcc.Graph(
                 id="radar",
                 figure={},  # Use the Plotly figure generated
-                style={'height': '45vh', 'marginBottom': '30px'}  # Adjusting the height of the plot
+                style={'height': '45vh', 'marginBottom': '30px'},  # Adjusting the height of the plot
+                config={"scrollZoom": True, 'showTips': True}
             ),
             dmc.Grid([
                 dmc.Col([
@@ -135,7 +153,7 @@ app.layout = dmc.Container([
                         placeholder="X-axis attribute",
                         style={'width': '100%'}  # Use 100% width within the column
                     )
-                ], span=4),  # Use span to control the column width (out of 12)
+                ], span=3),  # Use span to control the column width (out of 12)
 
                 dmc.Col([
                     dcc.Dropdown(
@@ -145,34 +163,43 @@ app.layout = dmc.Container([
                         placeholder="Y-axis attribute",
                         style={'width': '100%'}  # Use 100% width within the column
                     )
-                ], span=4),  # Use span to control the column width (out of 12)
+                ], span=3),  # Use span to control the column width (out of 12)
                 dmc.Col([
                     daq.BooleanSwitch(
                         id='genre_sort_switch',
                         on=False,  # False = Do not sort by genre, True = Sort by genre
                         label={
-                            "label": "Sort by genre",  # The text of the label
+                            "label": "Genres",  # The text of the label
                             "style": {  # Custom styling for the label
                                 "fontFamily": "Arial, sans-serif",
                                 "fontSize": "16px",
                                 "fontWeight": "600",
                                 "color": "#333333",  # Dark gray color
-                                "marginLeft": "10px", # Add some spacing from the switch
+                                "marginRight": "100px",  # Add some spacing from the switch
                                 "paddingBottom": "8px"
                             }
                         },
                         labelPosition='right',
-                         # Change font color (dark gray)
                     )
-                ], span=4, style={'paddingLeft': '80px'}),  # Use span to control the column width (out of 12)
+                ], span=3),
+                dmc.Col([
+                    dcc.Dropdown(
+                        id="encode_size",
+                        options=[{"label": col, "value": col} for col in size_attributes],
+                        placeholder="encode_size",
+                        style={'width': '100%'}  # Use 100% width within the column
+                    )
+                ], span=3),
+                # Use span to control the column width (out of 12)
             ], align="center"),
             # Scatter plot to show the correlation between the two selected attributes
             dcc.Graph(
                 id="scatter_plot",
                 figure={},  # Initially empty
-                style={'height': '45vh'}  # Adjusting the height of the plot
+                style={'height': '45vh'},  # Adjusting the height of the plot
+                config={"scrollZoom": True, 'showTips': True}
             ),
-        ], span=12, md = 6)
+        ], span=12, md=6)
     ], style={"width": "100%", "height": "100%"}),
 ], fluid=True, style={"width": "100%", "maxWidth": "100%", "margin": "0 auto"})
 
@@ -185,9 +212,6 @@ def update_graph(genres_chosen):
     if not genres_chosen:
         return go.Figure()
     filtered_df = df[df['primary genre'].str.lower().isin(genres_chosen)]
-    # Calculate profit for the movies and add a column
-    filtered_df = calculate_profit(filtered_df)
-    # Get the average profit of each category for each year
     average_profit_by_genre_year = filtered_df.groupby(['year', 'primary genre'])['profit'].mean().reset_index()
     # Rename columns for clarity
     average_profit_by_genre_year.columns = ['year', 'genre', 'average profit']
@@ -307,16 +331,14 @@ def update_radar(genres_chosen):
     Input("x_axis_dropdown", "value"),
     Input("y_axis_dropdown", "value"),
     Input("genre_select", "value"),
-    Input("genre_sort_switch", "on")  # Add this input to track the toggle switch
+    Input("genre_sort_switch", "on"),
+    Input("encode_size", "value")
 )
-def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on):
+def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_size):
     if not x_attr or not y_attr:
         return go.Figure()  # Return an empty figure if one or both attributes are not selected
 
-    # Filter the DataFrame based on selected genres
     filtered_df = df.copy()
-
-    # Check if both attributes are numeric
 
     x_attr = x_attr.lower()
     y_attr = y_attr.lower()
@@ -327,16 +349,8 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on):
         filtered_df[y_attr] = pd.to_numeric(filtered_df[y_attr], errors='coerce')
     filtered_df = filtered_df.dropna(subset=[x_attr, y_attr])
 
-        # Sort by both attributes
+    # Sort by both attributes
     filtered_df = filtered_df.sort_values(by=[x_attr, y_attr], ascending=True)
-
-    # Debug: Print the sorted DataFrame
-    print("Sorted DataFrame:")
-    print(filtered_df[[x_attr, y_attr]])
-
-    # Debug: Print the sorted DataFrame
-    print("Sorted DataFrame:")
-    print(filtered_df[[x_attr, y_attr]])
 
     # Create the scatter plot figure
     fig = go.Figure()
@@ -344,25 +358,32 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on):
     if genre_sort_on:
         # If genre sorting is on, create a scatter line for each genre
         for genre in filtered_df['primary genre'].unique():
-            filtered_df = filtered_df[filtered_df['primary genre'].str.lower().isin([genre.lower() for genre in genres_chosen])]
+            filtered_df = filtered_df[
+                filtered_df['primary genre'].str.lower().isin([genre.lower() for genre in genres_chosen])]
             genre_df = filtered_df[filtered_df['primary genre'] == genre]
+
+            hover_text, size = encoding_size(encode_size, genre_df)
+
             fig.add_trace(go.Scatter(
                 x=genre_df[x_attr],
                 y=genre_df[y_attr],
                 mode='markers',
                 name=genre,
-                marker=dict(color=color_map.get(genre, 'gray')),
-                text=genre_df['film']
+                marker=dict(color=color_map.get(genre, 'gray'), size=size),
+                text=hover_text
             ))
     else:
+        hover_text, size = encoding_size(encode_size, filtered_df)
+
         # Plot all data points together
         fig.add_trace(go.Scatter(
             x=filtered_df[x_attr],
             y=filtered_df[y_attr],
             mode='markers',
             name=f"{x_attr} vs {y_attr}",
-            marker=dict(color=filtered_df['primary genre'].apply(lambda x: color_map.get(x, 'gray'))),
-            text=filtered_df['film']
+            marker=dict(color=filtered_df['primary genre'].apply(lambda x: color_map.get(x, 'gray')), size=size),
+            text=hover_text
+
         ))
 
     # Update layout
@@ -372,12 +393,37 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on):
         yaxis_title=y_attr,
         yaxis=dict(range=[filtered_df[y_attr].min(), filtered_df[y_attr].max()]),
         xaxis=dict(range=[filtered_df[x_attr].min(), filtered_df[x_attr].max()]),
-        hovermode="closest"
+        hovermode="closest",
+        legend=dict(
+            tracegroupgap=0,  # Keep the legend neat and without gaps between groups
+            itemsizing="constant"  # Set the fixed size of the markers in the legend
+        )
     )
 
     return fig
 
 
+def encoding_size(encode_size, genre_df):
+    if encode_size and encode_size in size_attributes:
+        size = genre_df[encode_size]
+        size = size.fillna(size.mean())  # Replace NaN values with the mean size if needed
+        hover_text = genre_df.apply(lambda row: f"{row['film']}<br>{encode_size}: ${row[encode_size]:,.2f}",
+                                    axis=1)
+        if encode_size == 'profit':
+            size = size / 10000000
+        elif encode_size == 'domestic gross ($million)':
+            size = size / 5
+        elif encode_size == 'foreign gross ($million)':
+            size = size / 8
+        elif encode_size == 'worldwide gross ($million)':
+            size = size / 10
+        else:
+            size = size / 2
+
+    else:
+        size = 5
+        hover_text = genre_df['film']  # Default to just the film name if encode_size isn't available
+    return hover_text, size
 
 
 if __name__ == '__main__':
