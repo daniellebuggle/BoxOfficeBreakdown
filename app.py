@@ -119,7 +119,7 @@ app.layout = dmc.Container([
                 style={'height': '80vh'}  # Adjusting the height of the plot
             ),
             dmc.Container(id="message", style={"marginTop": "20px"})
-        ], span=5),
+        ], span=12, md=6),
         dmc.Col([
             dcc.Graph(
                 id="radar",
@@ -150,22 +150,29 @@ app.layout = dmc.Container([
                     daq.BooleanSwitch(
                         id='genre_sort_switch',
                         on=False,  # False = Do not sort by genre, True = Sort by genre
-                        label="Sort by genre",
+                        label={
+                            "label": "Sort by genre",  # The text of the label
+                            "style": {  # Custom styling for the label
+                                "fontFamily": "Arial, sans-serif",
+                                "fontSize": "16px",
+                                "fontWeight": "600",
+                                "color": "#333333",  # Dark gray color
+                                "marginLeft": "10px", # Add some spacing from the switch
+                                "paddingBottom": "8px"
+                            }
+                        },
                         labelPosition='right',
-                        style={'fontFamily': 'Arial, sans-serif',  # Change font family
-                               'fontSize': '16px',  # Change font size
-                               'fontWeight': '600',  # Make the font bolder
-                               'color': '#333333'}  # Change font color (dark gray)
+                         # Change font color (dark gray)
                     )
-                ], span=2, style={'paddingRight': '10px'}),  # Use span to control the column width (out of 12)
-            ]),
+                ], span=4, style={'paddingLeft': '80px'}),  # Use span to control the column width (out of 12)
+            ], align="center"),
             # Scatter plot to show the correlation between the two selected attributes
             dcc.Graph(
                 id="scatter_plot",
                 figure={},  # Initially empty
                 style={'height': '45vh'}  # Adjusting the height of the plot
             ),
-        ], span=5)
+        ], span=12, md = 6)
     ], style={"width": "100%", "height": "100%"}),
 ], fluid=True, style={"width": "100%", "maxWidth": "100%", "margin": "0 auto"})
 
@@ -195,7 +202,12 @@ def update_graph(genres_chosen):
             row=x, col=1
         )
         x = x + 1
-    fig.update_layout(height=750, width=600, title_text="Average profit per year by genre", title_x=0.45)
+    fig.update_layout(
+        title_text="Average profit per year by genre",
+        title_x=0.45,
+        autosize=True,  # Automatically adjust the figure size
+        margin=dict(l=50, r=50, t=100, b=50)  # Add margins to the layout
+    )
     return fig
 
 
@@ -302,7 +314,7 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on):
         return go.Figure()  # Return an empty figure if one or both attributes are not selected
 
     # Filter the DataFrame based on selected genres
-    filtered_df = df[df['primary genre'].str.lower().isin([genre.lower() for genre in genres_chosen])]
+    filtered_df = df.copy()
 
     # Check if both attributes are numeric
 
@@ -332,6 +344,7 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on):
     if genre_sort_on:
         # If genre sorting is on, create a scatter line for each genre
         for genre in filtered_df['primary genre'].unique():
+            filtered_df = filtered_df[filtered_df['primary genre'].str.lower().isin([genre.lower() for genre in genres_chosen])]
             genre_df = filtered_df[filtered_df['primary genre'] == genre]
             fig.add_trace(go.Scatter(
                 x=genre_df[x_attr],
