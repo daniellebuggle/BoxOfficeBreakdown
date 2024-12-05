@@ -16,16 +16,13 @@ def calculate_profit(dataframe):
                                                                                    regex=True).astype(
         float)
     dataframe = dataframe.dropna(subset=['worldwide gross', 'budget ($million)'])
-    # Now calculate the profit
     dataframe['profit'] = dataframe['worldwide gross'] - dataframe['budget ($million)']
     return dataframe
 
 
 def sort_by_genre(dataframe, genre):
-    # Rename columns for clarity
     dataframe.columns = ['year', 'genre', 'average profit']
     genre_df = dataframe[dataframe['genre'] == genre]
-    # Sort by genre
     sorted_genre_df = genre_df.sort_values(by='year')
     return sorted_genre_df
 
@@ -52,7 +49,6 @@ def adjust_alpha(color, alpha_value):
     """
     rgba_values = color[5:-1]
     rgba_values = rgba_values.split(',')
-    # Replace the last value (original alpha) with the new alpha
     rgba_values[-1] = str(alpha_value)
     return f"rgba({', '.join(rgba_values)})"
 
@@ -83,8 +79,6 @@ numeric_attributes = [attr.strip().lower() for attr in numeric_attributes]  # Cl
 
 df = pd.read_csv('The Hollywood Insider.csv')
 df.columns = df.columns.str.strip().str.lower()
-
-# Convert 'primary genre' to lowercase
 df['primary genre'] = df['primary genre'].str.lower()
 
 df = clean_data(df, numeric_attributes)
@@ -113,10 +107,8 @@ color_map = {
     "musical": "rgba(145, 75, 20, 1)"  # #914b14
 }
 
-# Adjust alpha for transparency
 alpha_value = 0.3
 adjusted_color_map = {genre: adjust_alpha(color, alpha_value) for genre, color in color_map.items()}
-
 critic_categories = ['rotten tomatoes critics', 'metacritic critics', 'rotten tomatoes audience',
                      'metacritic audience']
 
@@ -132,16 +124,16 @@ app.layout = dmc.Container([
             dcc.Dropdown(all_genres, id="genre_select", placeholder="Select genres", value=initial_genres, multi=True),
             dcc.Graph(
                 id="scatter_multiples",
-                figure={},  # Use the Plotly figure generated
-                style={'height': '80vh'}  # Adjusting the height of the plot
+                figure={},
+                style={'height': '80vh'}
             ),
             dmc.Container(id="message", style={"marginTop": "20px"})
         ], span=12, md=6),
         dmc.Col([
             dcc.Graph(
                 id="radar",
-                figure={},  # Use the Plotly figure generated
-                style={'height': '45vh', 'marginBottom': '30px'},  # Adjusting the height of the plot
+                figure={},
+                style={'height': '45vh', 'marginBottom': '30px'},
                 config={"scrollZoom": True, 'showTips': True}
             ),
             dmc.Grid([
@@ -151,9 +143,9 @@ app.layout = dmc.Container([
                         options=[{"label": col, "value": col} for col in df.columns if
                                  col != 'year' and col != 'primary genre'],
                         placeholder="X-axis attribute",
-                        style={'width': '100%'}  # Use 100% width within the column
+                        style={'width': '100%'}
                     )
-                ], span=3),  # Use span to control the column width (out of 12)
+                ], span=3),
 
                 dmc.Col([
                     dcc.Dropdown(
@@ -161,21 +153,21 @@ app.layout = dmc.Container([
                         options=[{"label": col, "value": col} for col in df.columns if
                                  col != 'year' and col != 'primary genre'],
                         placeholder="Y-axis attribute",
-                        style={'width': '100%'}  # Use 100% width within the column
+                        style={'width': '100%'}
                     )
-                ], span=3),  # Use span to control the column width (out of 12)
+                ], span=3),
                 dmc.Col([
                     daq.BooleanSwitch(
                         id='genre_sort_switch',
-                        on=False,  # False = Do not sort by genre, True = Sort by genre
+                        on=False,
                         label={
-                            "label": "Genres",  # The text of the label
-                            "style": {  # Custom styling for the label
+                            "label": "Genres",
+                            "style": {
                                 "fontFamily": "Arial, sans-serif",
                                 "fontSize": "16px",
                                 "fontWeight": "600",
-                                "color": "#333333",  # Dark gray color
-                                "marginRight": "100px",  # Add some spacing from the switch
+                                "color": "#333333",
+                                "marginRight": "100px",
                                 "paddingBottom": "8px"
                             }
                         },
@@ -187,16 +179,15 @@ app.layout = dmc.Container([
                         id="encode_size",
                         options=[{"label": col, "value": col} for col in size_attributes],
                         placeholder="encode_size",
-                        style={'width': '100%'}  # Use 100% width within the column
+                        style={'width': '100%'}
                     )
                 ], span=3),
-                # Use span to control the column width (out of 12)
             ], align="center"),
             # Scatter plot to show the correlation between the two selected attributes
             dcc.Graph(
                 id="scatter_plot",
-                figure={},  # Initially empty
-                style={'height': '45vh'},  # Adjusting the height of the plot
+                figure={},
+                style={'height': '45vh'},
                 config={"scrollZoom": True, 'showTips': True}
             ),
         ], span=12, md=6)
@@ -229,8 +220,8 @@ def update_graph(genres_chosen):
     fig.update_layout(
         title_text="Average profit per year by genre",
         title_x=0.45,
-        autosize=True,  # Automatically adjust the figure size
-        margin=dict(l=50, r=50, t=100, b=50)  # Add margins to the layout
+        autosize=True,
+        margin=dict(l=50, r=50, t=100, b=50)
     )
     return fig
 
@@ -263,7 +254,7 @@ def update_radar(genres_chosen):
 
     # Define the layout of subplots with merged cells in the second row
     specs = [
-        [{"type": "polar"}, {"type": "polar"}, {"type": "polar"}],  # First row with 3 plots
+        [{"type": "polar"}, {"type": "polar"}, {"type": "polar"}],
         [{"type": "polar", "colspan": 2}, {"type": "polar", "colspan": 2}, None]
         # Second row with merged cells for centering
     ]
@@ -287,24 +278,21 @@ def update_radar(genres_chosen):
             ), row=row, col=col
         )
         plot_idx += 1
-
-        # Update the layout for each subplot's radial axis
         fig.update_layout(
             height=250 * rows, width=800,
             title_text="Critic Scores", title_x=0.45,
             legend=dict(
                 title="genres",
                 orientation="v",
-                x=1.05,  # Position the legend outside of the plot area (right side)
-                y=0.5,  # Center the legend vertically
-            )
+                x=1.05,
+                y=0.5,
+            ),
+            autosize=True,
         )
-        rotation = 0
-        # Update polar radial axis for all subplots
         for row in range(1, rows + 1):
             for col in range(1, cols + 1):
-                # Alternate tick positions based on row and column
-                if (row + col) % 2 == 0:  # Condition for alternating ticks
+                # Alternate rotation positions based on row and column
+                if (row + col) % 2 == 0:
                     rotation = 0
                 else:
                     rotation = 45
@@ -326,7 +314,6 @@ def update_radar(genres_chosen):
     return fig
 
 
-# Callback for updating the scatter plot based on the selected attributes and the genre sort toggle
 @app.callback(
     Output("scatter_plot", "figure"),
     Input("x_axis_dropdown", "value"),
@@ -341,19 +328,12 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_siz
 
     filtered_df = df.copy()
 
-    x_attr = x_attr.lower()
-    y_attr = y_attr.lower()
-
     if x_attr in numeric_attributes:
         filtered_df[x_attr] = pd.to_numeric(filtered_df[x_attr], errors='coerce')
     if y_attr in numeric_attributes:
         filtered_df[y_attr] = pd.to_numeric(filtered_df[y_attr], errors='coerce')
     filtered_df = filtered_df.dropna(subset=[x_attr, y_attr])
-
-    # Sort by both attributes
     filtered_df = filtered_df.sort_values(by=[x_attr, y_attr], ascending=True)
-
-    # Create the scatter plot figure
     fig = go.Figure()
 
     if genre_sort_on:
@@ -362,9 +342,7 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_siz
             filtered_df = filtered_df[
                 filtered_df['primary genre'].str.lower().isin([genre.lower() for genre in genres_chosen])]
             genre_df = filtered_df[filtered_df['primary genre'] == genre]
-
             hover_text, size = encoding_size(encode_size, genre_df)
-
             fig.add_trace(go.Scatter(
                 x=genre_df[x_attr],
                 y=genre_df[y_attr],
@@ -375,8 +353,6 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_siz
             ))
     else:
         hover_text, size = encoding_size(encode_size, filtered_df)
-
-        # Plot all data points together
         fig.add_trace(go.Scatter(
             x=filtered_df[x_attr],
             y=filtered_df[y_attr],
@@ -386,8 +362,6 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_siz
             text=hover_text
 
         ))
-
-    # Update layout
     fig.update_layout(
         title=f"Scatter Plot: {x_attr} vs {y_attr}",
         xaxis_title=x_attr,
@@ -396,7 +370,7 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_siz
         xaxis=dict(range=[filtered_df[x_attr].min(), filtered_df[x_attr].max()]),
         hovermode="closest",
         legend=dict(
-            tracegroupgap=0,  # Keep the legend neat and without gaps between groups
+            tracegroupgap=0,
             itemsizing="constant"  # Set the fixed size of the markers in the legend
         )
     )
@@ -407,7 +381,6 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_siz
 def encoding_size(encode_size, genre_df):
     if encode_size and encode_size in size_attributes:
         size = genre_df[encode_size]
-        size = size.fillna(size.mean())  # Replace NaN values with the mean size if needed
         hover_text = genre_df.apply(lambda row: f"{row['film']}<br>{encode_size}: ${row[encode_size]:,.2f}",
                                     axis=1)
         if encode_size == 'profit':
@@ -423,7 +396,7 @@ def encoding_size(encode_size, genre_df):
 
     else:
         size = 5
-        hover_text = genre_df['film']  # Default to just the film name if encode_size isn't available
+        hover_text = genre_df['film']
     return hover_text, size
 
 
