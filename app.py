@@ -109,10 +109,13 @@ color_map = {
 
 alpha_value = 0.3
 adjusted_color_map = {genre: adjust_alpha(color, alpha_value) for genre, color in color_map.items()}
+color_map_table = {genre: adjust_alpha(color, 0.6) for genre, color in color_map.items()}
 critic_categories = ['rotten tomatoes critics', 'metacritic critics', 'rotten tomatoes audience',
                      'metacritic audience']
 
-
+dropdown_categories = ["film", "rotten tomatoes critics", "metacritic critics", "average critics ",
+                       "rotten tomatoes audience", "metacritic audience", "average audience",
+                        "script type", "oscar winners", "oscar detail"]
 
 app = Dash()
 app.layout = dmc.Container([
@@ -127,24 +130,25 @@ app.layout = dmc.Container([
             dcc.Graph(
                 id="scatter_multiples",
                 figure={},
-                style={'height': '80vh'}
+                style={'height': '80vh'},
+                config={"responsive": True}
             ),
             dmc.Container(id="message", style={"marginTop": "20px"})
-        ], span=12, md=6),
+        ], span=6),
         dmc.Col([
             dcc.Graph(
                 id="radar",
                 figure={},
                 style={'height': '45vh', 'marginBottom': '30px'},
-                config={"scrollZoom": True, 'showTips': True}
+                config={"scrollZoom": True, 'showTips': True, "responsive": True}
             ),
             dmc.Grid([
                 dmc.Col([
                     dcc.Dropdown(
                         id="x_axis_dropdown",
-                        options=[{"label": col, "value": col} for col in df.columns if
-                                 col != 'year' and col != 'primary genre'],
-                        placeholder="X-axis attribute",
+                        options=[{"label": col, "value": col} for col in dropdown_categories],
+                        placeholder="X-axis",
+                        value="rotten tomatoes critics",
                         style={'width': '100%'}
                     ),
                 ], span=3, style={'display': 'flex', 'align-items': 'right'}),
@@ -152,9 +156,9 @@ app.layout = dmc.Container([
                 dmc.Col([
                     dcc.Dropdown(
                         id="y_axis_dropdown",
-                        options=[{"label": col, "value": col} for col in df.columns if
-                                 col != 'year' and col != 'primary genre'],
-                        placeholder="Y-axis attribute",
+                        options=[{"label": col, "value": col} for col in dropdown_categories],
+                        placeholder="Y-axis",
+                        value="metacritic critics",
                         style={'width': '100%'}
                     )
                 ], span=3, style={'display': 'flex', 'align-items': 'right'}),
@@ -181,21 +185,22 @@ app.layout = dmc.Container([
                     dcc.Dropdown(
                         id="encode_size",
                         options=[{"label": col, "value": col} for col in size_attributes],
-                        placeholder="encode_size",
+                        placeholder="Size Attribute",
                         style={'width': '100%'}
                     )
                 ], span=3, style={'display': 'flex', 'align-items': 'left'}),
             ], align="center"),
+
             # Scatter plot to show the correlation between the two selected attributes
             dcc.Graph(
                 id="scatter_plot",
                 figure={},
                 style={'height': '45vh'},
-                config={"scrollZoom": True, 'showTips': True}
+                config={"scrollZoom": True, 'showTips': True, "responsive": True}
             ),
-        ], span=12, md=6)
+        ], span=6)
     ], style={"width": "100%", "height": "100%"}),
-], fluid=True, style={"width": "100%", "maxWidth": "100%", "margin": "0 auto"})
+], style={"width": "100%", "maxWidth": "100%"})
 
 
 @callback(
@@ -282,7 +287,6 @@ def update_radar(genres_chosen):
         )
         plot_idx += 1
         fig.update_layout(
-            height=250 * rows, width=800,
             title_text="Critic Scores", title_x=0.45,
             legend=dict(
                 title="genres",
@@ -290,7 +294,6 @@ def update_radar(genres_chosen):
                 x=1.05,
                 y=0.5,
             ),
-            autosize=True,
         )
         for row in range(1, rows + 1):
             for col in range(1, cols + 1):
@@ -328,6 +331,69 @@ def update_radar(genres_chosen):
 def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_size):
     if not x_attr or not y_attr:
         return go.Figure()  # Return an empty figure if one or both attributes are not selected
+
+    if ((x_attr == "film" and y_attr == "oscar winners") or (x_attr == "oscar winners" and y_attr == "film") or
+            (x_attr == "film" and y_attr == "oscar detail") or (x_attr == "oscar detail" and y_attr == "film") or
+            (x_attr == "film" and y_attr == "script type") or (x_attr == "script type" and y_attr == "film") or
+            (x_attr == "oscar winners" and y_attr == "script type") or (
+                    x_attr == "script type" and y_attr == "oscar winners") or
+            (x_attr == "oscar winners" and y_attr == "oscar detail") or (
+                    x_attr == "oscar detail" and y_attr == "oscar winners") or
+            (x_attr == "script type" and y_attr == "oscar detail") or (
+                    x_attr == "oscar detail" and y_attr == "script type")
+    ):
+        filtered_df = df.copy()
+        filtered_df = filtered_df.dropna(subset=[x_attr, y_attr])
+
+        if x_attr == "oscar detail" or y_attr == "oscar detail":
+            filtered_df = filtered_df.sort_values(by=['oscar detail', 'film'])
+        else:
+            filtered_df = filtered_df.sort_values(by=['script type', 'film'])
+
+        # Filter by selected genres if applicable
+        if genre_sort_on:
+            filtered_df = filtered_df[filtered_df['primary genre'].str.lower().isin([g.lower() for g in genres_chosen])]
+            if x_attr == "oscar winners" or y_attr == "oscar winners":
+                if x_attr == "script type" or y_attr == "script type":
+                    filtered_df = filtered_df.sort_values(by=['primary genre', 'script type'])
+                elif x_attr == "oscar detail" or y_attr == "oscar detail":
+                    filtered_df = filtered_df.sort_values(by=['primary genre', 'oscar detail'])
+                else:
+                    filtered_df = filtered_df.sort_values(by=['primary genre', 'film'])
+            elif x_attr == "oscar detail" or y_attr == "oscar detail":
+                filtered_df = filtered_df.sort_values(by=['primary genre', 'oscar detail'])
+            else:
+                filtered_df = filtered_df.sort_values(by=['primary genre', 'script type'])
+
+        row_colors = [color_map_table.get(genre.lower(), 'white') for genre in filtered_df["primary genre"]]
+
+        # Create the table figure
+        table_fig = go.Figure(data=[go.Table(
+            header=dict(
+                values=[x_attr.title(), "Primary Genre", y_attr.title()],
+                fill_color='lightgrey',
+                align='left'
+            ),
+            cells=dict(
+                values=[
+                    filtered_df[x_attr],
+                    filtered_df["primary genre"],
+                    filtered_df[y_attr]
+                ],
+                # Assign row colors dynamically based on the genre
+                fill_color=[
+                    row_colors,  # Film column colors (row-based color matching to genre)
+                    row_colors,  # Primary Genre column colors (row-based color matching to genre)
+                    row_colors  # Oscar Winner column with white background
+                ],
+                align='left'
+            )
+        )])
+        table_fig.update_layout(
+            title=f"Table: {x_attr.title()} and {y_attr.title()} Status",  # Adjust height as needed
+        )
+
+        return table_fig
 
     filtered_df = df.copy()
 
