@@ -299,15 +299,15 @@ def update_radar(genres_chosen):
                 y=0.5,  # Center the legend vertically
             )
         )
-
+        rotation = 0
         # Update polar radial axis for all subplots
         for row in range(1, rows + 1):
             for col in range(1, cols + 1):
                 # Alternate tick positions based on row and column
                 if (row + col) % 2 == 0:  # Condition for alternating ticks
-                    tickvals = [1, 2, 3, 4]  # Ticks at 0, 2, and 4 positions
+                    rotation = 0
                 else:
-                    tickvals = [0.5, 1.5, 2.5, 3.5]  # Ticks at 1 and 3 positions
+                    rotation = 45
                 fig.update_polars(
                     row=row, col=col,
                     radialaxis=dict(
@@ -317,9 +317,10 @@ def update_radar(genres_chosen):
                         showline=False,
                     ),
                     angularaxis=dict(
-                        tickvals=tickvals,
-                        ticktext=["RT Critic", "Meta Critic", "RT Audience", "Meta Audience"],  # Custom labels
+                        tickvals=list(range(len(critic_categories))),
+                        ticktext=["Meta Critic", "RT Audience", "Meta Audience", "RT Critic"],  # Custom labels
                         showline=False,
+                        rotation=rotation
                     )
                 )
     return fig
