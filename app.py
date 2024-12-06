@@ -101,7 +101,7 @@ color_map = {
     "romance": "rgba(255, 192, 203, 1)",  # pink
     "sci-fi": "rgba(245, 154, 35, 1)",  # #F59A23
     "biography": "rgba(138, 43, 226, 1)",  # #8A2BE2
-    "crime": "rgba(105, 105, 105, 1)",  # #696969
+    "crime": "rgba(22, 233, 84, 1)",  # #16e954
     "fantasy": "rgba(128, 0, 128, 1)",  # purple
     "family": "rgba(0, 206, 209, 1)",  # #00CED1
     "musical": "rgba(145, 75, 20, 1)"  # #914b14
@@ -114,8 +114,8 @@ critic_categories = ['rotten tomatoes critics', 'metacritic critics', 'rotten to
                      'metacritic audience']
 
 dropdown_categories = ["film", "rotten tomatoes critics", "metacritic critics", "average critics ",
-                       "rotten tomatoes audience", "metacritic audience", "average audience",
-                        "script type", "oscar winners", "oscar detail"]
+                       "rotten tomatoes audience", "metacritic audience", "script type", "oscar winners",
+                       "oscar detail"]
 
 app = Dash()
 app.layout = dmc.Container([
@@ -146,7 +146,7 @@ app.layout = dmc.Container([
                 dmc.Col([
                     dcc.Dropdown(
                         id="x_axis_dropdown",
-                        options=[{"label": col, "value": col} for col in dropdown_categories],
+                        options=[{"label": col.title(), "value": col} for col in dropdown_categories],
                         placeholder="X-axis",
                         value="rotten tomatoes critics",
                         style={'width': '100%'}
@@ -156,7 +156,7 @@ app.layout = dmc.Container([
                 dmc.Col([
                     dcc.Dropdown(
                         id="y_axis_dropdown",
-                        options=[{"label": col, "value": col} for col in dropdown_categories],
+                        options=[{"label": col.title(), "value": col} for col in dropdown_categories],
                         placeholder="Y-axis",
                         value="metacritic critics",
                         style={'width': '100%'}
@@ -184,7 +184,7 @@ app.layout = dmc.Container([
                 dmc.Col([
                     dcc.Dropdown(
                         id="encode_size",
-                        options=[{"label": col, "value": col} for col in size_attributes],
+                        options=[{"label": col.title(), "value": col} for col in size_attributes],
                         placeholder="Size Attribute",
                         style={'width': '100%'}
                     )
@@ -195,7 +195,7 @@ app.layout = dmc.Container([
             dcc.Graph(
                 id="scatter_plot",
                 figure={},
-                style={'height': '45vh'},
+                style={'height': '50vh'},
                 config={"scrollZoom": True, 'showTips': True, "responsive": True}
             ),
         ], span=6)
@@ -411,7 +411,7 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_siz
             filtered_df = filtered_df[
                 filtered_df['primary genre'].str.lower().isin([genre.lower() for genre in genres_chosen])]
             genre_df = filtered_df[filtered_df['primary genre'] == genre]
-            hover_text, size = encoding_size(encode_size, genre_df)
+            hover_text, size, size_title = encoding_size(encode_size, genre_df)
             fig.add_trace(go.Scatter(
                 x=genre_df[x_attr],
                 y=genre_df[y_attr],
@@ -421,26 +421,34 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_siz
                 text=hover_text
             ))
     else:
-        hover_text, size = encoding_size(encode_size, filtered_df)
-        fig.add_trace(go.Scatter(
-            x=filtered_df[x_attr],
-            y=filtered_df[y_attr],
-            mode='markers',
-            name=f"{x_attr} vs {y_attr}",
-            marker=dict(color=filtered_df['primary genre'].apply(lambda x: color_map.get(x, 'gray')), size=size),
-            text=hover_text
-
-        ))
+        for genre in filtered_df['primary genre'].unique():
+            filtered_df = filtered_df[
+                filtered_df['primary genre'].str.lower().isin([genre.lower() for genre in all_genres])]
+            hover_text, size, size_title = encoding_size(encode_size, filtered_df)
+            genre_df = filtered_df[filtered_df['primary genre'] == genre]
+            fig.add_trace(go.Scatter(
+                x=genre_df[x_attr],
+                y=genre_df[y_attr],
+                mode='markers',
+                name=genre,
+                marker=dict(color=color_map.get(genre, 'gray'), size=size),
+                text=hover_text,
+                showlegend=True
+            ))
     fig.update_layout(
-        title=f"Scatter Plot: {x_attr} vs {y_attr}",
+        title=f"Scatter Plot: {x_attr.title()} vs {y_attr.title()} {size_title}",
         xaxis_title=x_attr,
         yaxis_title=y_attr,
         yaxis=dict(range=[filtered_df[y_attr].min(), filtered_df[y_attr].max()]),
         xaxis=dict(range=[filtered_df[x_attr].min(), filtered_df[x_attr].max()]),
         hovermode="closest",
         legend=dict(
-            tracegroupgap=0,
-            itemsizing="constant"  # Set the fixed size of the markers in the legend
+            itemsizing="constant",  # Keeps marker size consistent
+            tracegroupgap=0,  # Reduce gap between legend items
+            yanchor="top",  # Anchor legend at the top
+            y=1,  # Position it at the top
+            xanchor="left",  # Anchor legend to the left
+            x=1.02,  # Position slightly outside the plot area
         )
     )
 
@@ -449,6 +457,7 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_siz
 
 def encoding_size(encode_size, genre_df):
     if encode_size and encode_size in size_attributes:
+        title = "(Size Encoded by " + encode_size.title() + ")"
         size = genre_df[encode_size]
         hover_text = genre_df.apply(lambda row: f"{row['film']}<br>{encode_size}: ${row[encode_size]:,.2f}",
                                     axis=1)
@@ -466,8 +475,9 @@ def encoding_size(encode_size, genre_df):
     else:
         size = 5
         hover_text = genre_df['film']
-    return hover_text, size
+        title = ""
+    return hover_text, size, title
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)
