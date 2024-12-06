@@ -26,11 +26,6 @@ def sort_by_genre(dataframe, genre):
     sorted_genre_df = genre_df.sort_values(by='year')
     return sorted_genre_df
 
-
-def get_genre(dataframe, genre):
-    return dataframe[dataframe['primary genre'] == genre]
-
-
 def critic_scores(dataframe, genres):
     genre_scores = {}
     for genre in genres:
