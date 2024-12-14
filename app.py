@@ -57,7 +57,7 @@ def clean_data(dataframe, list_numeric):
 
 
 numeric_attributes = [
-    "rotten tomatoes critics", "metacritic critics", "average critics ",
+    "rotten tomatoes critics", "metacritic critics", "average critics",
     "rotten tomatoes audience", "metacritic audience", "average audience",
     "audience vs critics deviance", "opening weekend ($million)",
     "opening weekend", "domestic gross ($million)", "domestic gross",
@@ -108,7 +108,7 @@ color_map_table = {genre: adjust_alpha(color, 0.6) for genre, color in color_map
 critic_categories = ['rotten tomatoes critics', 'metacritic critics', 'rotten tomatoes audience',
                      'metacritic audience']
 
-dropdown_categories = ["film", "rotten tomatoes critics", "metacritic critics", "average critics ",
+dropdown_categories = ["film", "rotten tomatoes critics", "metacritic critics", "average critics",
                        "rotten tomatoes audience", "metacritic audience", "script type", "oscar winners",
                        "oscar detail"]
 
@@ -327,15 +327,9 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_siz
     if not x_attr or not y_attr:
         return go.Figure()  # Return an empty figure if one or both attributes are not selected
 
-    if ((x_attr == "film" and y_attr == "oscar winners") or (x_attr == "oscar winners" and y_attr == "film") or
-            (x_attr == "film" and y_attr == "oscar detail") or (x_attr == "oscar detail" and y_attr == "film") or
-            (x_attr == "film" and y_attr == "script type") or (x_attr == "script type" and y_attr == "film") or
-            (x_attr == "oscar winners" and y_attr == "script type") or (
-                    x_attr == "script type" and y_attr == "oscar winners") or
-            (x_attr == "oscar winners" and y_attr == "oscar detail") or (
-                    x_attr == "oscar detail" and y_attr == "oscar winners") or
-            (x_attr == "script type" and y_attr == "oscar detail") or (
-                    x_attr == "oscar detail" and y_attr == "script type")
+    if ((x_attr == "film" or y_attr == "film") or (x_attr == "oscar detail" or y_attr == "oscar detail") or
+            (x_attr == "script type" or y_attr == "script type") or
+            (x_attr == "oscar winners" or y_attr == "oscar winners")
     ):
         filtered_df = df.copy()
         filtered_df = filtered_df.dropna(subset=[x_attr, y_attr])
@@ -375,17 +369,16 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_siz
                     filtered_df["primary genre"],
                     filtered_df[y_attr]
                 ],
-                # Assign row colors dynamically based on the genre
                 fill_color=[
-                    row_colors,  # Film column colors (row-based color matching to genre)
-                    row_colors,  # Primary Genre column colors (row-based color matching to genre)
-                    row_colors  # Oscar Winner column with white background
+                    row_colors,
+                    row_colors,
+                    row_colors
                 ],
                 align='left'
             )
         )])
         table_fig.update_layout(
-            title=f"Table: {x_attr.title()} and {y_attr.title()} Status",  # Adjust height as needed
+            title=f"Table: {x_attr.title()} and {y_attr.title()} Status",
         )
 
         return table_fig
@@ -402,9 +395,7 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_siz
 
     if genre_sort_on:
         # If genre sorting is on, create a scatter line for each genre
-        for genre in filtered_df['primary genre'].unique():
-            filtered_df = filtered_df[
-                filtered_df['primary genre'].str.lower().isin([genre.lower() for genre in genres_chosen])]
+        for genre in genres_chosen:
             genre_df = filtered_df[filtered_df['primary genre'] == genre]
             hover_text, size, size_title = encoding_size(encode_size, genre_df)
             fig.add_trace(go.Scatter(
@@ -416,11 +407,9 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_siz
                 text=hover_text
             ))
     else:
-        for genre in filtered_df['primary genre'].unique():
-            filtered_df = filtered_df[
-                filtered_df['primary genre'].str.lower().isin([genre.lower() for genre in all_genres])]
-            hover_text, size, size_title = encoding_size(encode_size, filtered_df)
+        for genre in all_genres:  # Iterate over all genres
             genre_df = filtered_df[filtered_df['primary genre'] == genre]
+            hover_text, size, size_title = encoding_size(encode_size, genre_df)
             fig.add_trace(go.Scatter(
                 x=genre_df[x_attr],
                 y=genre_df[y_attr],
@@ -440,10 +429,6 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_siz
         legend=dict(
             itemsizing="constant",  # Keeps marker size consistent
             tracegroupgap=0,  # Reduce gap between legend items
-            yanchor="top",  # Anchor legend at the top
-            y=1,  # Position it at the top
-            xanchor="left",  # Anchor legend to the left
-            x=1.02,  # Position slightly outside the plot area
         )
     )
 
@@ -452,21 +437,24 @@ def update_scatter_plot(x_attr, y_attr, genres_chosen, genre_sort_on, encode_siz
 
 def encoding_size(encode_size, genre_df):
     if encode_size and encode_size in size_attributes:
-        title = "(Size Encoded by " + encode_size.title() + ")"
         size = genre_df[encode_size]
         hover_text = genre_df.apply(lambda row: f"{row['film']}<br>{encode_size}: ${row[encode_size]:,.2f}",
                                     axis=1)
         if encode_size == 'profit':
-            size = size / 10000000
+            size = size / 20000000
         elif encode_size == 'domestic gross ($million)':
-            size = size / 5
+            size = size / 7
+            encode_size = 'domestic gross'
         elif encode_size == 'foreign gross ($million)':
-            size = size / 8
+            size = size / 15
+            encode_size = 'foreign gross'
         elif encode_size == 'worldwide gross ($million)':
-            size = size / 10
+            size = size / 20
+            encode_size = 'worldwide gross'
         else:
             size = size / 2
-
+            encode_size = 'opening weekend'
+        title = "(Size Encoded by " + encode_size.title() + ")"
     else:
         size = 5
         hover_text = genre_df['film']
